@@ -1,5 +1,6 @@
 import { Editor } from "@monaco-editor/react";
 import { Loader2 } from "lucide-react";
+import { useTheme } from "@/components/ui/theme-provider";
 
 interface CodeEditorProps {
   value: string;
@@ -9,6 +10,8 @@ interface CodeEditorProps {
 }
 
 export function CodeEditor({ value, language, onChange, fileName }: CodeEditorProps) {
+  const { theme } = useTheme();
+  
   const getLanguageFromFileName = (name: string) => {
     const ext = name.split('.').pop()?.toLowerCase();
     switch (ext) {
@@ -57,7 +60,7 @@ export function CodeEditor({ value, language, onChange, fileName }: CodeEditorPr
             automaticLayout: true,
             tabSize: 2,
             wordWrap: 'on',
-            theme: 'vs-light',
+            theme: theme === 'dark' ? 'vs-dark' : 'vs-light',
             fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
             renderLineHighlight: 'line',
             selectOnLineNumbers: true,

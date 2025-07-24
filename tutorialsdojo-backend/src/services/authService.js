@@ -1,76 +1,129 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const { User } = require('../models');
+const config = require('../config/config');
 
 class AuthService {
-  generateTokens(userId) {
-    const accessToken = jwt.sign(
-      { userId },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN }
-    );
-    
-    const refreshToken = jwt.sign(
-      { userId },
-      process.env.JWT_REFRESH_SECRET,
-      { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN }
-    );
-    
-    return { accessToken, refreshToken };
+  static generateToken(payload) {
+    return jwt.sign(payload, config.jwt.secret, {
+      expiresIn: config.jwt.expiresIn
+    });
   }
 
-  async verifyToken(token) {
+  static verifyToken(token) {
+    return jwt.verify(token, config.jwt.secret);
+  }
+
+  static async register(userData) {
+    const { username, email, password, firstName, lastName } = userData;
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      where: {
+        $or: [
+          { email },
+          { username }
+        ]
+      }
+    });
+
+    if (existingUser) {
+      if (existingUser.email === email) {
+        throw new Error('Email already registered');
+      }
+      if (existingUser.username === username) {
+        throw new Error('Username already taken');
+      }
+    }
+
+    // Create new user
+    const user = await User.create({
+      username,
+      email,
+      password,
+      firstName,
+      lastName
+    });
+
+    // Generate token
+    const token = this.generateToken({
+      userId: user.id,
+      email: user.email,
+      username: user.username
+    });
+
+    return {
+      user,
+      token
+    };
+  }
+
+  static async login(credentials) {
+    const { email, password } = credentials;
+    
+    // Find user by email
+    const user = await User.findOne({
+      where: { email }
+    });
+
+    if (!user) {
+      throw new Error('Invalid credentials');
+    }
+
+    if (!user.isActive) {
+      throw new Error('Account is deactivated');
+    }
+
+    // Check password
+    const isValidPassword = await user.comparePassword(password);
+    if (!isValidPassword) {
+      throw new Error('Invalid credentials');
+    }
+
+    // Update last login
+    await user.update({ lastLogin: new Date() });
+
+    // Generate token
+    const token = this.generateToken({
+      userId: user.id,
+      email: user.email,
+      username: user.username
+    });
+
+    return {
+      user,
+      token
+    };
+  }
+
+  static async getUserFromToken(token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = this.verifyToken(token);
       const user = await User.findByPk(decoded.userId);
+      
+      if (!user || !user.isActive) {
+        throw new Error('User not found or inactive');
+      }
+
       return user;
     } catch (error) {
       throw new Error('Invalid token');
     }
   }
 
-  async register(userData) {
-    const { username, email, password } = userData;
+  static async refreshToken(token) {
+    const user = await this.getUserFromToken(token);
     
-    // Check if user already exists
-    const existingUser = await User.findOne({
-      where: {
-        $or: [{ email }, { username }]
-      }
+    const newToken = this.generateToken({
+      userId: user.id,
+      email: user.email,
+      username: user.username
     });
-    
-    if (existingUser) {
-      throw new Error('User already exists');
-    }
-    
-    // Create user
-    const user = await User.create({
-      username,
-      email,
-      passwordHash: password
-    });
-    
-    const tokens = this.generateTokens(user.id);
-    
-    return {
-      user: user.toJSON(),
-      ...tokens
-    };
-  }
 
-  async login(email, password) {
-    const user = await User.findOne({ where: { email } });
-    
-    if (!user || !(await user.comparePassword(password))) {
-      throw new Error('Invalid credentials');
-    }
-    
-    const tokens = this.generateTokens(user.id);
-    
     return {
-      user: user.toJSON(),
-      ...tokens
+      user,
+      token: newToken
     };
   }
 }
 
-module.exports = new AuthService();
+module.exports = AuthService;

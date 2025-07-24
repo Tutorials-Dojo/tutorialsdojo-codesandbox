@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
-const bcrypt = require('bcrypt');
-const { sequelize } = require('../utils/database');
+const sequelize = require('../database/database');
+const bcrypt = require('bcryptjs');
 
 const User = sequelize.define('User', {
   id: {
@@ -9,11 +9,11 @@ const User = sequelize.define('User', {
     primaryKey: true
   },
   username: {
-    type: DataTypes.STRING(50),
+    type: DataTypes.STRING,
     allowNull: false,
     unique: true,
     validate: {
-      len: [3, 50],
+      len: [3, 30],
       isAlphanumeric: true
     }
   },
@@ -25,49 +25,66 @@ const User = sequelize.define('User', {
       isEmail: true
     }
   },
-  passwordHash: {
+  password: {
     type: DataTypes.STRING,
     allowNull: false,
-    field: 'password_hash'
+    validate: {
+      len: [6, 100]
+    }
   },
-  plan: {
-    type: DataTypes.ENUM('free', 'pro', 'enterprise'),
-    defaultValue: 'free'
+  firstName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      len: [1, 50]
+    }
   },
-  avatarUrl: {
-    type: DataTypes.TEXT,
-    field: 'avatar_url'
+  lastName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      len: [1, 50]
+    }
+  },
+  avatar: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
+  lastLogin: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
-  tableName: 'users',
-  underscored: true,
   timestamps: true,
-  createdAt: 'created_at',
-  updatedAt: 'updated_at'
-});
-
-// Hash password before saving
-User.beforeCreate(async (user) => {
-  if (user.passwordHash) {
-    user.passwordHash = await bcrypt.hash(user.passwordHash, 12);
-  }
-});
-
-User.beforeUpdate(async (user) => {
-  if (user.changed('passwordHash')) {
-    user.passwordHash = await bcrypt.hash(user.passwordHash, 12);
+  hooks: {
+    beforeCreate: async (user) => {
+      if (user.password) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      }
+    },
+    beforeUpdate: async (user) => {
+      if (user.changed('password')) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      }
+    }
   }
 });
 
 // Instance methods
 User.prototype.comparePassword = async function(candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.passwordHash);
+  return bcrypt.compare(candidatePassword, this.password);
 };
 
 User.prototype.toJSON = function() {
-  const user = this.get({ plain: true });
-  delete user.passwordHash;
-  return user;
+  const values = Object.assign({}, this.get());
+  delete values.password;
+  return values;
 };
 
 module.exports = User;

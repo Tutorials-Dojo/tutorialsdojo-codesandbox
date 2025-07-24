@@ -1,0 +1,22 @@
+[Unit]
+Description=Tutorials Dojo API Server
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/tutorials-dojo-backend
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=10
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+# Firecracker requires root privileges
+# Security: Consider using capabilities instead of root in production
+# Security: Run in a separate user namespace
+
+[Install]
+WantedBy=multi-user.target
