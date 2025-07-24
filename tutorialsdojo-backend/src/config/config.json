@@ -1,0 +1,31 @@
+{
+  "development": {
+    "username": "postgres",
+    "password": "password123",
+    "database": "tutorialsdojo_dev",
+    "host": "localhost",
+    "dialect": "postgres",
+    "port": 5432,
+    "logging": false
+  },
+  "test": {
+    "username": "postgres",
+    "password": "password123",
+    "database": "tutorialsdojo_test",
+    "host": "localhost",
+    "dialect": "postgres",
+    "port": 5432,
+    "logging": false
+  },
+  "production": {
+    "use_env_variable": "DATABASE_URL",
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    },
+    "logging": false
+  }
+}
