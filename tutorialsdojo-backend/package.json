@@ -6,5 +6,8 @@
     "db:migrate": "sequelize-cli db:migrate",
     "db:seed": "sequelize-cli db:seed:all",
     "db:reset": "sequelize-cli db:drop && sequelize-cli db:create && npm run db:migrate && npm run db:seed"
+  },
+  "dependencies": {
+    "uuid": "^11.1.0"
   }
 }

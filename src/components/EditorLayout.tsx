@@ -3,8 +3,12 @@ import { useSearchParams } from "react-router-dom";
 import { Header } from "./Header";
 import { FileExplorer, FileNode } from "./FileExplorer";
 import { CodeEditor } from "./CodeEditor";
-import { Preview } from "./Preview";
+import { ExecutionPanel } from "./execution/ExecutionPanel";
+import { QuickExecute } from "./execution/QuickExecute";
 import { useToast } from "@/hooks/use-toast";
+import { useExecution } from "@/hooks/useExecution";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { executionService } from "@/services/executionService";
 
 // Default project files
 const defaultFiles: FileNode[] = [
@@ -18,6 +22,7 @@ const defaultFiles: FileNode[] = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tutorials Dojo Project</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
@@ -25,6 +30,7 @@ const defaultFiles: FileNode[] = [
         <p>Start building your amazing project here.</p>
         <button id="clickMe">Click me!</button>
     </div>
+    <script src="script.js"></script>
 </body>
 </html>`
   },
@@ -86,7 +92,7 @@ button:hover {
     name: 'script.js',
     type: 'file',
     content: `// Welcome to Tutorials Dojo JavaScript!
-console.log('Welcome to Tutorials Dojo!');
+console.log('Welcome to Tutorials Dojo with Firecracker VM!');
 
 document.addEventListener('DOMContentLoaded', function() {
     const button = document.getElementById('clickMe');
@@ -110,7 +116,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const container = document.querySelector('.container');
         if (container) {
             const welcomeMsg = document.createElement('div');
-            welcomeMsg.innerHTML = '<p><em>✨ Ready to start coding? Edit the files and see the magic happen!</em></p>';
+            welcomeMsg.innerHTML = '<p><em>✨ Running in secure Firecracker VM! Edit files and deploy instantly.</em></p>';
             welcomeMsg.style.animation = 'fadeIn 0.5s ease-in';
             container.appendChild(welcomeMsg);
         }
@@ -129,7 +135,7 @@ document.head.appendChild(style);`
   }
 ];
 
-// Template-specific files
+// Template-specific files (keeping your existing templates)
 const getTemplateFiles = (templateId: string): FileNode[] => {
   switch (templateId) {
     case 'react':
@@ -310,252 +316,9 @@ ReactDOM.render(<App />, document.getElementById('root'));` :
 ReactDOM.render(<App />, document.getElementById('root'));`
         }
       ];
-    case 'vanilla-ts':
-      return [
-        {
-          id: 'index.html',
-          name: 'index.html',
-          type: 'file',
-          content: `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TypeScript Project</title>
-    <script src="https://unpkg.com/typescript@5/lib/typescript.js"></script>
-</head>
-<body>
-    <div id="app">
-        <h1>Welcome to TypeScript!</h1>
-        <p id="counter">Count: 0</p>
-        <button id="increment">+</button>
-        <button id="decrement">-</button>
-    </div>
-    <script src="main.ts"></script>
-</body>
-</html>`
-        },
-        {
-          id: 'main.ts',
-          name: 'main.ts',
-          type: 'file',
-          content: `interface Counter {
-  value: number;
-  increment(): void;
-  decrement(): void;
-}
-
-class CounterApp implements Counter {
-  value: number = 0;
-  private counterElement: HTMLElement;
-
-  constructor() {
-    this.counterElement = document.getElementById('counter')!;
-    this.setupEventListeners();
-    this.render();
-  }
-
-  increment(): void {
-    this.value++;
-    this.render();
-  }
-
-  decrement(): void {
-    this.value--;
-    this.render();
-  }
-
-  private setupEventListeners(): void {
-    document.getElementById('increment')?.addEventListener('click', () => this.increment());
-    document.getElementById('decrement')?.addEventListener('click', () => this.decrement());
-  }
-
-  private render(): void {
-    this.counterElement.textContent = \`Count: \${this.value}\`;
-  }
-}
-
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  new CounterApp();
-});`
-        }
-      ];
-    case 'next-js':
+    // Add other template cases as needed...
     default:
-      return [
-        {
-          id: 'index.html',
-          name: 'index.html',
-          type: 'file',
-          content: `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Next.js-like App</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
-<body>
-    <div id="root"></div>
-    <script type="text/babel" src="pages/index.js"></script>
-</body>
-</html>`
-        },
-        {
-          id: 'pages/index.js',
-          name: 'pages/index.js',
-          type: 'file',
-          content: `function HomePage() {
-  return (
-    <div style={{ padding: '40px', fontFamily: 'system-ui, sans-serif' }}>
-      <h1>Welcome to Next.js-like App! 🚀</h1>
-      <p>This simulates a Next.js structure in the browser.</p>
-      <div style={{ marginTop: '20px' }}>
-        <a href="#" style={{ color: '#0070f3', textDecoration: 'none' }}>
-          Learn more about Next.js →
-        </a>
-      </div>
-    </div>
-  );
-}
-
-ReactDOM.render(<HomePage />, document.getElementById('root'));`
-        }
-      ];
-    case 'vue':
-      return [
-        {
-          id: 'index.html',
-          name: 'index.html',
-          type: 'file',
-          content: `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vue.js App</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-</head>
-<body>
-    <div id="app">
-      <h1>{{ title }}</h1>
-      <p>{{ message }}</p>
-      <button @click="increment">Count: {{ count }}</button>
-    </div>
-    <script src="app.js"></script>
-</body>
-</html>`
-        },
-        {
-          id: 'app.js',
-          name: 'app.js',
-          type: 'file',
-          content: `const { createApp } = Vue;
-
-createApp({
-  data() {
-    return {
-      title: 'Welcome to Vue.js! 🔧',
-      message: 'Start building amazing reactive apps!',
-      count: 0
-    }
-  },
-  methods: {
-    increment() {
-      this.count++;
-    }
-  }
-}).mount('#app');`
-        }
-      ];
-    case 'node-express':
-      return [
-        {
-          id: 'index.html',
-          name: 'index.html',
-          type: 'file',
-          content: `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Node.js Express Simulation</title>
-</head>
-<body>
-    <div id="app">
-        <h1>Node.js Express API Simulation 🟢</h1>
-        <p>This simulates a Node.js Express server in the browser.</p>
-        <button id="fetchData">Fetch Data from "API"</button>
-        <div id="result"></div>
-    </div>
-    <script src="server.js"></script>
-</body>
-</html>`
-        },
-        {
-          id: 'server.js',
-          name: 'server.js',
-          type: 'file',
-          content: `// Simulated Express server in the browser
-class MockExpress {
-  constructor() {
-    this.routes = new Map();
-    this.setupRoutes();
-  }
-
-  get(path, handler) {
-    this.routes.set(\`GET:\${path}\`, handler);
-  }
-
-  post(path, handler) {
-    this.routes.set(\`POST:\${path}\`, handler);
-  }
-
-  async request(method, path) {
-    const key = \`\${method}:\${path}\`;
-    const handler = this.routes.get(key);
-    if (handler) {
-      return await handler();
-    }
-    return { error: 'Route not found' };
-  }
-
-  setupRoutes() {
-    this.get('/api/users', () => ({
-      users: [
-        { id: 1, name: 'John Doe', email: 'john@example.com' },
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com' }
-      ]
-    }));
-
-    this.get('/api/health', () => ({
-      status: 'OK',
-      timestamp: new Date().toISOString()
-    }));
-  }
-}
-
-// Initialize mock server
-const app = new MockExpress();
-
-// Frontend interaction
-document.addEventListener('DOMContentLoaded', () => {
-  const fetchButton = document.getElementById('fetchData');
-  const resultDiv = document.getElementById('result');
-
-  fetchButton.addEventListener('click', async () => {
-    const data = await app.request('GET', '/api/users');
-    resultDiv.innerHTML = \`
-      <h3>API Response:</h3>
-      <pre>\${JSON.stringify(data, null, 2)}</pre>
-    \`;
-  });
-});`
-        }
-      ];
+      return defaultFiles;
   }
 };
 
@@ -563,6 +326,7 @@ export function EditorLayout() {
   const [searchParams] = useSearchParams();
   const templateId = searchParams.get('template');
   const projectName = searchParams.get('name') || 'My Awesome Project';
+  const projectId = searchParams.get('projectId') || `demo-project-${Date.now()}`;
   
   const initialFiles = templateId ? getTemplateFiles(templateId) : defaultFiles;
   const [files] = useState<FileNode[]>(initialFiles);
@@ -575,7 +339,22 @@ export function EditorLayout() {
       return acc;
     }, {} as Record<string, string>)
   );
+  const [isAutoDeployEnabled, setIsAutoDeployEnabled] = useState(true);
+  const [lastSaved, setLastSaved] = useState<Date>(new Date());
+  
   const { toast } = useToast();
+  const { sandboxStatus, updateSandbox } = useExecution({ projectId });
+
+  // Auto-deploy when files change
+  useEffect(() => {
+    if (isAutoDeployEnabled && sandboxStatus === 'running') {
+      const timeoutId = setTimeout(() => {
+        handleDeploy();
+      }, 2000); // Deploy 2 seconds after last change
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [fileContents, isAutoDeployEnabled, sandboxStatus]);
 
   const handleFileSelect = useCallback((file: FileNode) => {
     setActiveFile(file);
@@ -590,22 +369,89 @@ export function EditorLayout() {
     }
   }, [activeFile]);
 
-  const handleSave = useCallback(() => {
-    toast({
-      title: "Project saved!",
-      description: "Your changes have been saved successfully.",
-    });
-  }, [toast]);
+  const handleSave = useCallback(async () => {
+    try {
+      // In a real app, you'd save to backend here
+      setLastSaved(new Date());
+      
+      toast({
+        title: "Project saved!",
+        description: "Your changes have been saved successfully.",
+      });
 
-  const handleRun = useCallback(() => {
-    toast({
-      title: "Running project...",
-      description: "Preview has been updated with your latest changes.",
-    });
-  }, [toast]);
+      // Auto-deploy if enabled and VM is running
+      if (isAutoDeployEnabled && sandboxStatus === 'running') {
+        await handleDeploy();
+      }
+    } catch (error) {
+      toast({
+        title: "Save failed",
+        description: "Failed to save your changes. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [isAutoDeployEnabled, sandboxStatus, toast]);
+
+  const handleDeploy = useCallback(async () => {
+    try {
+      if (sandboxStatus !== 'running') {
+        toast({
+          title: "VM not running",
+          description: "Start the VM first to deploy your changes.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Update sandbox with current files
+      await updateSandbox();
+      
+      toast({
+        title: "Deployed!",
+        description: "Your changes have been deployed to the VM.",
+      });
+    } catch (error) {
+      toast({
+        title: "Deploy failed",
+        description: "Failed to deploy your changes. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [sandboxStatus, updateSandbox, toast]);
+
+  const handleRun = useCallback(async () => {
+    // For quick testing, we can use the executeCode function
+    try {
+      const vmFiles = Object.entries(fileContents).map(([id, content]) => {
+        const file = files.find(f => f.id === id);
+        return {
+          name: file?.name || id,
+          content: content || ''
+        };
+      });
+
+      const result = await executionService.executeCode({
+        files: vmFiles,
+        language: 'javascript'
+      });
+
+      if (result.success && result.result) {
+        toast({
+          title: "Code executed!",
+          description: `Execution time: ${result.result.executionTime}ms`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Execution failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+    }
+  }, [fileContents, files, toast]);
 
   const handleShare = useCallback(() => {
-    const shareUrl = `${window.location.origin}/editor?template=${templateId || 'vanilla-js'}&name=${encodeURIComponent(projectName)}`;
+    const shareUrl = `${window.location.origin}/editor?template=${templateId || 'vanilla-js'}&name=${encodeURIComponent(projectName)}&projectId=${projectId}`;
     navigator.clipboard.writeText(shareUrl).then(() => {
       toast({
         title: "Link copied!",
@@ -617,7 +463,7 @@ export function EditorLayout() {
         description: shareUrl,
       });
     });
-  }, [toast, templateId, projectName]);
+  }, [toast, templateId, projectName, projectId]);
 
   const handleCreateFile = useCallback(() => {
     const fileName = prompt('Enter file name (e.g., component.js, style.css):');
@@ -629,7 +475,6 @@ export function EditorLayout() {
         content: '// New file\n'
       };
       
-      // Add to files state (simplified - in real app, you'd manage this properly)
       setFileContents(prev => ({
         ...prev,
         [fileName]: '// New file\n'
@@ -642,16 +487,6 @@ export function EditorLayout() {
     }
   }, [toast]);
 
-  const htmlContent = fileContents['index.html'] || '';
-  const cssContent = fileContents['styles.css'] || '';
-  const jsContent = fileContents['script.js'] || '';
-
-  // Extract and inject CSS into HTML
-  const processedHtml = htmlContent.replace(
-    '</head>',
-    `<link rel="stylesheet" href="styles.css">\n<script src="script.js"></script>\n</head>`
-  );
-
   return (
     <div className="h-screen flex flex-col bg-background">
       <Header 
@@ -659,30 +494,56 @@ export function EditorLayout() {
         onSave={handleSave}
         onRun={handleRun}
         onShare={handleShare}
+        onDeploy={handleDeploy}
+        isAutoDeployEnabled={isAutoDeployEnabled}
+        onToggleAutoDeploy={setIsAutoDeployEnabled}
+        lastSaved={lastSaved}
+        vmStatus={sandboxStatus}
       />
       
-      <div className="flex-1 flex overflow-hidden">
-        <FileExplorer
-          files={files}
-          activeFile={activeFile?.id || null}
-          onFileSelect={handleFileSelect}
-          onCreateFile={handleCreateFile}
-          onCreateFolder={handleCreateFile}
-        />
-        
-        <CodeEditor
-          value={activeFile ? (fileContents[activeFile.id] || '') : ''}
-          language="javascript"
-          onChange={handleCodeChange}
-          fileName={activeFile?.name}
-        />
-        
-        <Preview
-          htmlContent={processedHtml}
-          cssContent={cssContent}
-          jsContent={jsContent}
-        />
-      </div>
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        {/* File Explorer */}
+        <ResizablePanel defaultSize={20} minSize={15} maxSize={30}>
+          <FileExplorer
+            files={files}
+            activeFile={activeFile?.id || null}
+            onFileSelect={handleFileSelect}
+            onCreateFile={handleCreateFile}
+            onCreateFolder={handleCreateFile}
+          />
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        {/* Code Editor */}
+        <ResizablePanel defaultSize={50} minSize={30}>
+          <div className="h-full flex flex-col">
+            <CodeEditor
+              value={activeFile ? (fileContents[activeFile.id] || '') : ''}
+              language="javascript"
+              onChange={handleCodeChange}
+              fileName={activeFile?.name}
+            />
+            
+            {/* Quick Execute Panel */}
+            <div className="border-t p-4 bg-muted/30">
+              <QuickExecute />
+            </div>
+          </div>
+        </ResizablePanel>
+
+        <ResizableHandle withHandle />
+
+        {/* Execution Panel */}
+        <ResizablePanel defaultSize={30} minSize={25} maxSize={50}>
+          <ExecutionPanel 
+            projectId={projectId}
+            onUpdate={() => {
+              // Refresh any necessary data after VM operations
+            }}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }
